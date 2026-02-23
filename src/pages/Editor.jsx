@@ -63,6 +63,19 @@ const PRESETS = {
     ['chair',     2.9, 1.2, 270,   '#7A5A30'],
     ['lamp',      3.5, 0.3,   0,   '#A08060'],
   ],
+  'Kitchen Set': [
+    ['sidetable', 0.2, 0.2,   0,   '#9B8870'],
+    ['sidetable', 0.8, 0.2,   0,   '#9B8870'],
+    ['sidetable', 1.4, 0.2,   0,   '#9B8870'],
+    ['sidetable', 2.0, 0.2,   0,   '#9B8870'],
+    ['dining',    0.8, 2.2,   0,   '#7B6040'],
+    ['chair',     0.8, 1.6,   0,   '#6B5030'],
+    ['chair',     0.8, 3.3, 180,   '#6B5030'],
+    ['chair',     0.2, 2.2,  90,   '#6B5030'],
+    ['chair',     2.5, 2.2, 270,   '#6B5030'],
+    ['plant',     2.8, 0.2,   0,   '#5A8A40'],
+    ['lamp',      2.8, 3.8,   0,   '#C0A060'],
+  ],
 }
 
 let UID = 1
@@ -364,6 +377,7 @@ function Room3D({ items, wallColor, floorColor, roomW, roomD, roomH, selUid, onS
   const rendererRef = useRef(null)
   const furnitureMeshes = useRef({})
   const animFrameRef = useRef(null)
+  const sceneReadyRef = useRef(false)
   const controlsRef = useRef({ isDragging:false, isOrbiting:false, lastMouse:{x:0,y:0}, theta:0.6, phi:0.9, radius:8, target:new THREE.Vector3(0,0,0) })
   const dragRef = useRef(null)
   const raycaster = useRef(new THREE.Raycaster())
@@ -429,6 +443,10 @@ function Room3D({ items, wallColor, floorColor, roomW, roomD, roomH, selUid, onS
     // Soft hemisphere sky/ground
     const hemi = new THREE.HemisphereLight('#E8EEF5', '#D4C4A8', 0.35)
     scene.add(hemi)
+
+    // Mark scene ready and immediately build any pending furniture
+    sceneReadyRef.current = true
+    buildAllFurniture(scene, itemsRef.current)
 
     // Animate
     const animate = () => {
@@ -522,14 +540,17 @@ function Room3D({ items, wallColor, floorColor, roomW, roomD, roomH, selUid, onS
 
   }, [wallColor, floorColor, roomW, roomD, roomH])
 
-  // Build/update furniture meshes
-  useEffect(() => {
-    const scene = sceneRef.current; if (!scene) return
 
+  const itemsRef = useRef(items)
+  useEffect(() => { itemsRef.current = items }, [items])
+
+  // Standalone furniture builder - works with any scene reference
+  const buildAllFurniture = useCallback((scene, currentItems) => {
+    if (!scene) return
     const existing = furnitureMeshes.current
-    const itemIds = new Set(items.map(i => i.uid))
+    const itemIds = new Set(currentItems.map(i => i.uid))
 
-    // Remove deleted
+    // Remove deleted items
     Object.keys(existing).forEach(uid => {
       if (!itemIds.has(parseInt(uid))) {
         scene.remove(existing[uid])
@@ -537,17 +558,15 @@ function Room3D({ items, wallColor, floorColor, roomW, roomD, roomH, selUid, onS
       }
     })
 
-    // Add/update
-    items.forEach(item => {
+    // Add/update items
+    currentItems.forEach(item => {
       const uid = item.uid
       const rotRad = ((item.rotY||0) * Math.PI) / 180
       if (existing[uid]) {
-        // Update position and rotation
         existing[uid].position.set(item.x + item.w/2, 0, item.y + item.d/2)
         existing[uid].rotation.y = rotRad
         return
       }
-      // Build new mesh
       const group = buildFurnitureMesh(item, scene)
       group.position.set(item.x + item.w/2, 0, item.y + item.d/2)
       group.rotation.y = rotRad
@@ -556,23 +575,15 @@ function Room3D({ items, wallColor, floorColor, roomW, roomD, roomH, selUid, onS
       existing[uid] = group
       scene.add(group)
     })
+  }, [])
 
-    // Update selection highlight
-    items.forEach(item => {
-      const mesh = existing[item.uid]
-      if (!mesh) return
-      mesh.traverse(child => {
-        if (child.isMesh) {
-          if (child.material && child.material.emissive) {
-            child.material.emissive.set(item.uid === selUid ? '#2A1F10' : '#000000')
-            child.material.emissiveIntensity = item.uid === selUid ? 0.4 : 0
-          }
-        }
-      })
-    })
-  }, [items, selUid])
+  // Rebuild furniture whenever items change (if scene is ready)
+  useEffect(() => {
+    if (!sceneReadyRef.current) return
+    buildAllFurniture(sceneRef.current, items)
+  }, [items, buildAllFurniture])
 
-  // Update selection highlight separately
+  // Update selection highlight whenever selUid changes
   useEffect(() => {
     const existing = furnitureMeshes.current
     Object.values(existing).forEach(mesh => {
@@ -646,14 +657,14 @@ function Room3D({ items, wallColor, floorColor, roomW, roomD, roomH, selUid, onS
       const target = new THREE.Vector3()
       raycaster.current.ray.intersectPlane(floorPlane.current, target)
       const uid = dragRef.current.uid
-      const item = items.find(i => i.uid === uid)
+      const item = itemsRef.current.find(i => i.uid === uid)
       if (item && target) {
         const nx = Math.max(0, Math.min(target.x - item.w/2, roomW - item.w))
         const nz = Math.max(0, Math.min(target.z - item.d/2, roomD - item.d))
         onMove3D(uid, nx, nz)
       }
     }
-  }, [items, roomW, roomD, onMove3D])
+  }, [roomW, roomD, onMove3D])
 
   const onPointerUp = useCallback(() => {
     controlsRef.current.isOrbiting = false
@@ -770,9 +781,49 @@ export default function Editor() {
     const { template, preset, editDesign } = s
     if (editDesign) {
       const d = editDesign
-      setWidth(d.width); setDepth(d.depth||d.length); setHeight(d.height)
-      setWallColor(d.wallColor); setFloorColor(d.floorColor); setDname(d.name)
-      setItems((d.items||[]).map(i=>({...i,uid:UID++}))); setCreated(true); return
+      const w = d.width || '5.0'
+      const dep = d.depth || d.length || '6.0'
+      const h = d.height || '2.8'
+      setWidth(w); setDepth(dep); setHeight(h)
+      setWallColor(d.wallColor || '#EDE9E3')
+      setFloorColor(d.floorColor || '#C4A882')
+      setDname(d.name || '')
+
+      // Convert items: old format used pixel-based w/h (e.g. 120px grid units)
+      // New format uses meters. Detect by checking if any w > 10 (meters never exceed 10)
+      const rawItems = d.items || []
+      const needsConversion = rawItems.length > 0 && rawItems[0].w > 10
+
+      const converted = rawItems.map(item => {
+        if (needsConversion) {
+          // Old: w/h were in canvas pixels (90px per meter), x/y also in pixels
+          const PX_PER_M = 90
+          const matched = FLIST.find(f => f.id === item.id)
+          return {
+            ...item,
+            uid: UID++,
+            rotY: item.rotY || 0,
+            w: matched ? matched.w : Math.round((item.w / PX_PER_M) * 10) / 10,
+            d: matched ? matched.d : Math.round((item.h / PX_PER_M) * 10) / 10,
+            h: matched ? matched.h : 0.8,
+            x: Math.round((item.x / PX_PER_M) * 10) / 10,
+            y: Math.round((item.y / PX_PER_M) * 10) / 10,
+          }
+        }
+        // Already meter-based — just ensure rotY and uid
+        const matched = FLIST.find(f => f.id === item.id)
+        return {
+          ...(matched || {}),
+          ...item,
+          uid: UID++,
+          rotY: item.rotY || 0,
+        }
+      })
+
+      setItems(converted)
+      setCreated(true)
+      setViewMode('3D')
+      return
     }
     if (template && TEMPLATES[template]) {
       const t = TEMPLATES[template]
@@ -780,11 +831,28 @@ export default function Editor() {
       setWallColor(t.wallColor); setFloorColor(t.floorColor)
       setCreated(true); setDname(template); setItems([])
     }
-    if (preset && PRESETS[preset]) {
-      setItems(PRESETS[preset].map(([id, px, py, rotY, color]) => {
-        const m = FLIST.find(f => f.id === id)
-        return { uid:UID++, ...m, x:px, y:py, rotY: rotY||0, color: color||'#A08060' }
-      })); setCreated(true)
+    if (preset) {
+      // Normalize key: 'Kitchen Set', 'Kitchen Area Set' etc → try exact then fuzzy
+      const presetKey = Object.keys(PRESETS).find(k => k === preset)
+        || Object.keys(PRESETS).find(k => k.toLowerCase().includes(preset.toLowerCase().split(' ')[0]))
+      if (presetKey) {
+        // Also apply matching template room dimensions
+        const templateKey = Object.keys(TEMPLATES).find(k =>
+          k.toLowerCase().includes(presetKey.toLowerCase().split(' ')[0])
+        )
+        if (templateKey) {
+          const t = TEMPLATES[templateKey]
+          setWidth(t.width); setDepth(t.length); setHeight(t.height)
+          setWallColor(t.wallColor); setFloorColor(t.floorColor)
+          setDname(presetKey.replace(' Set',''))
+        }
+        setItems(PRESETS[presetKey].map(([id, px, py, rotY, color]) => {
+          const m = FLIST.find(f => f.id === id)
+          return { uid:UID++, ...m, x:px, y:py, rotY: rotY||0, color: color||'#A08060' }
+        }))
+        setCreated(true)
+        setViewMode('3D')
+      }
     }
   }, [location.state])
 
@@ -799,13 +867,28 @@ export default function Editor() {
     if (!user) { navigate('/signin'); return }
     const name = dname.trim() || 'My Design'
     const code = 'DR' + Math.floor(100+Math.random()*900)
-    const design = { id:Date.now(), userId:user.id, code, name, date:new Date().toLocaleDateString('en-GB'), width, depth, height, wallColor, floorColor, items }
+    const design = {
+      id: Date.now(), userId: user.id, code, name,
+      date: new Date().toLocaleDateString('en-GB'),
+      width, depth, length: depth, height,
+      wallColor, floorColor, items
+    }
     localStorage.setItem('designs', JSON.stringify([...JSON.parse(localStorage.getItem('designs')||'[]'), design]))
     alert(`✅ Design "${name}" saved!\nCode: ${code}`)
   }
 
   const updateItemColor = (uid, color) => setItems(p => p.map(i => i.uid===uid ? {...i,color} : i))
   const rotateItem = (uid, deltaRot) => setItems(p => p.map(i => i.uid===uid ? {...i, rotY:((i.rotY||0)+deltaRot+360)%360} : i))
+
+  const handleNew = () => {
+    if (items.length > 0 || created) {
+      if (!window.confirm('Start a new design? Any unsaved changes will be lost.')) return
+    }
+    setWidth('5.0'); setDepth('6.0'); setHeight('2.8')
+    setWallColor('#EDE9E3'); setFloorColor('#C4A882')
+    setItems([]); setSelUid(null); setDname('')
+    setCreated(false); setViewMode('3D')
+  }
 
   const on2DMove = useCallback((uid, nx, nz) => {
     setItems(p => p.map(i => i.uid===uid ? {...i,x:nx,y:nz} : i))
@@ -882,6 +965,32 @@ export default function Editor() {
           transition: background 0.2s, color 0.2s; text-transform:uppercase;
         }
         .btn-save:hover { background:var(--accent); color:#FFF8F0 }
+
+        /* ── Design actions bar ── */
+        .design-bar {
+          background:var(--panel2); border-radius:10px; padding:10px 12px;
+          margin-bottom:16px; border:1.5px solid var(--border);
+        }
+        .design-bar-name {
+          font-size:12px; font-weight:600; color:var(--text);
+          margin-bottom:8px; display:flex; align-items:center; gap:6px;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .design-bar-dot { color:#7CB87C; font-size:8px }
+        .design-bar-actions { display:flex; flex-direction:column; gap:6px }
+        .dbar-btn {
+          width:100%; padding:9px 10px; border-radius:8px; font-family:'Jost',sans-serif;
+          font-size:10px; font-weight:600; letter-spacing:1.5px; cursor:pointer;
+          text-transform:uppercase; transition:all 0.2s; text-align:center;
+        }
+        .dbar-btn-new {
+          background:var(--accent); color:#FFF8F0; border:none;
+        }
+        .dbar-btn-new:hover { background:#5A3E2C }
+        .dbar-btn-clear {
+          background:transparent; color:#B05050; border:1.5px solid #D4A0A0;
+        }
+        .dbar-btn-clear:hover { background:#FFF0F0; border-color:#C05050 }
 
         .color-row { display:flex; gap:8px; margin-bottom:8px }
         .color-item { flex:1 }
@@ -1010,6 +1119,29 @@ export default function Editor() {
           {/* ── Left panel ── */}
           <div className="el">
             <div className="el-scroll">
+
+              {/* ── Design actions bar ── */}
+              <div className="design-bar">
+                <div className="design-bar-name">
+                  {dname
+                    ? <><span className="design-bar-dot">●</span>{dname}</>
+                    : <span style={{color:'var(--muted)',fontStyle:'italic'}}>No design open</span>
+                  }
+                </div>
+                <div className="design-bar-actions">
+                  <button className="dbar-btn dbar-btn-new" onClick={handleNew} title="Start a new design">
+                    + New Design
+                  </button>
+                  {created && items.length > 0 && (
+                    <button className="dbar-btn dbar-btn-clear" onClick={()=>{
+                      if(window.confirm('Remove all furniture from the room?')){setItems([]);setSelUid(null)}
+                    }} title="Remove all furniture">
+                      ✕ Clear Furniture
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="sec-title">Room</div>
               <div className="dim-grid">
                 <div className="dim-item">
@@ -1075,6 +1207,7 @@ export default function Editor() {
               <div className="sec-title">Save</div>
               <input className="design-name-input" placeholder="Design name…" value={dname} onChange={e=>setDname(e.target.value)}/>
               <button className="btn-save" onClick={handleSave}>Save Design</button>
+              <button className="btn-new" onClick={handleNew}>✦ New Design</button>
             </div>
           </div>
 
@@ -1091,6 +1224,7 @@ export default function Editor() {
             ) : viewMode === '3D' ? (
               <>
                 <Room3D
+                  key={`room3d-${created}-${items.map(i=>i.uid).join(',')}`}
                   items={items} wallColor={wallColor} floorColor={floorColor}
                   roomW={RW} roomD={RD} roomH={RH}
                   selUid={selUid} onSel={setSelUid} onMove3D={on3DMove}

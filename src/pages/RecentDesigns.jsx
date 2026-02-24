@@ -21,30 +21,28 @@ export default function RecentDesigns() {
   }, [])
 
   const handleDelete = (id) => {
-    const updated = designs.filter(d => d.id !== id)
+    if (!window.confirm('Delete this design?')) return
     const all = JSON.parse(localStorage.getItem('designs') || '[]')
     localStorage.setItem('designs', JSON.stringify(all.filter(d => d.id !== id)))
+    const updated = designs.filter(d => d.id !== id)
     setDesigns(updated)
     if (selected?.id === id) setSelected(null)
   }
 
+  // ← KEY FIX: include ts (timestamp) so each click is a unique navigation state
   const handleEdit = (design) => {
-    navigate('/editor', { state: { editDesign: design } })
+    navigate('/editor', { state: { editDesign: design, ts: Date.now() } })
   }
 
-  // ── Floor-plan mini preview (meter-based) ──────────────────────────────────
+  // ── Mini floor-plan preview ───────────────────────────────────────────────
   const DesignPreview = ({ design }) => {
-    const roomW = parseFloat(design.width)  || 5
+    const roomW = parseFloat(design.width) || 5
     const roomD = parseFloat(design.depth || design.length) || 6
-
-    // Scale to fit a fixed 200×170 box
     const maxW = 200, maxH = 170
     const scale = Math.min(maxW / roomW, maxH / roomD)
     const W = roomW * scale, H = roomD * scale
-
     const items = design.items || []
-    // Detect old pixel-based items (w > 10 means pixels, not meters)
-    const needsConversion = items.length > 0 && items[0].w > 10
+    const needsConversion = items.length > 0 && (items[0].w > 10 || (items[0].h > 10 && !items[0].d))
     const PX_PER_M = 90
 
     return (
@@ -54,13 +52,11 @@ export default function RecentDesigns() {
         background: (design.floorColor || '#C4A882') + '33',
         borderRadius: 4, overflow: 'hidden',
       }}>
-        {/* Wall inset */}
         <div style={{
           position: 'absolute', inset: 0,
           border: `8px solid ${design.wallColor || '#EDE9E3'}CC`,
           pointerEvents: 'none', borderRadius: 2,
         }}/>
-        {/* Floor planks hint */}
         {Array.from({ length: Math.ceil(roomW / 0.3) }).map((_, i) => (
           <div key={i} style={{
             position: 'absolute', left: i * (0.3 * scale), top: 0,
@@ -68,7 +64,6 @@ export default function RecentDesigns() {
             background: (design.floorColor || '#C4A882') + '44',
           }}/>
         ))}
-        {/* Furniture items */}
         {items.map((item, idx) => {
           let ix, iy, iw, ih
           if (needsConversion) {
@@ -82,19 +77,16 @@ export default function RecentDesigns() {
             iw = item.w * scale
             ih = (item.d || item.h) * scale
           }
-          const cx = ix + iw / 2, cy = iy + ih / 2
           return (
             <div key={idx} style={{
               position: 'absolute',
-              left: ix, top: iy, width: iw, height: ih,
+              left: ix, top: iy, width: Math.max(iw, 8), height: Math.max(ih, 8),
               background: (item.color || '#A08060') + 'BB',
-              borderRadius: 3,
-              border: '1px solid rgba(0,0,0,0.12)',
+              borderRadius: 3, border: '1px solid rgba(0,0,0,0.12)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: Math.min(iw, ih) * 0.55,
+              fontSize: Math.min(Math.max(iw, 8), Math.max(ih, 8)) * 0.55,
               transform: `rotate(${item.rotY || 0}deg)`,
-              transformOrigin: 'center center',
-              overflow: 'hidden',
+              transformOrigin: 'center center', overflow: 'hidden',
             }}>
               {EMOJI[item.id] || ''}
             </div>
@@ -108,136 +100,62 @@ export default function RecentDesigns() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Jost:wght@300;400;500&display=swap');
-        :root {
-          --bg:#F7F4EE; --panel:#EFEBE4; --border:#DDD5CB;
-          --text:#3A2E24; --accent:#6B4F3A; --muted:#9B8878; --white:#FEFCFA;
-        }
+        :root { --bg:#F7F4EE; --panel:#EFEBE4; --border:#DDD5CB; --text:#3A2E24; --accent:#6B4F3A; --muted:#9B8878; --white:#FEFCFA; }
         * { box-sizing:border-box; margin:0; padding:0 }
         .rd-page { min-height:100vh; background:var(--bg); font-family:'Jost',sans-serif; color:var(--text) }
         .rd-body { padding:32px 44px }
-
-        /* ── Header ── */
-        .rd-heading {
-          font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:600;
-          color:var(--accent); margin-bottom:24px; display:flex; align-items:center; gap:12px;
-        }
+        .rd-heading { font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:600; color:var(--accent); margin-bottom:24px; display:flex; align-items:center; gap:12px }
         .rd-heading::after { content:''; flex:1; height:1px; background:var(--border) }
-
-        /* ── Table ── */
-        .rd-table-wrap {
-          background:var(--white); border-radius:14px; overflow:hidden;
-          border:1px solid var(--border); margin-bottom:24px;
-          box-shadow:0 2px 16px rgba(58,46,36,0.06);
-        }
+        .rd-table-wrap { background:var(--white); border-radius:14px; overflow:hidden; border:1px solid var(--border); margin-bottom:24px; box-shadow:0 2px 16px rgba(58,46,36,0.06) }
         .rd-table { width:100%; border-collapse:collapse }
-        .rd-th {
-          text-align:left; padding:13px 22px; font-size:10px; font-weight:600;
-          color:var(--muted); background:var(--bg); border-bottom:1px solid var(--border);
-          letter-spacing:1.2px; text-transform:uppercase;
-        }
+        .rd-th { text-align:left; padding:13px 22px; font-size:10px; font-weight:600; color:var(--muted); background:var(--bg); border-bottom:1px solid var(--border); letter-spacing:1.2px; text-transform:uppercase }
         .rd-tr { border-bottom:1px solid #F0EBE4; transition:background .15s; cursor:pointer }
         .rd-tr:last-child { border-bottom:none }
         .rd-tr:hover { background:#FAF8F5 }
         .rd-tr.sel { background:#F2EDE6 }
         .rd-td { padding:13px 22px; font-size:13px; color:var(--text); vertical-align:middle }
-        .rd-td-code {
-          color:var(--muted); font-size:11.5px; font-weight:500;
-          font-family:'Courier New',monospace; letter-spacing:0.5px;
-        }
-        .rd-color-dot {
-          display:inline-block; width:12px; height:12px;
-          border-radius:50%; border:1px solid rgba(0,0,0,0.1);
-          margin-right:5px; vertical-align:middle;
-        }
+        .rd-td-code { color:var(--muted); font-size:11.5px; font-weight:500; font-family:'Courier New',monospace; letter-spacing:0.5px }
         .rd-actions { display:flex; gap:7px }
-        .rd-btn {
-          padding:5px 14px; border-radius:50px; border:1px solid var(--border);
-          background:var(--white); font-family:'Jost',sans-serif; font-size:11.5px;
-          cursor:pointer; transition:all .2s; font-weight:500;
-        }
+        .rd-btn { padding:5px 14px; border-radius:50px; border:1px solid var(--border); background:var(--white); font-family:'Jost',sans-serif; font-size:11.5px; cursor:pointer; transition:all .2s; font-weight:500 }
         .rd-btn-view { color:var(--accent) }
         .rd-btn-view:hover { background:var(--panel); border-color:var(--muted) }
+        .rd-btn-edit { color:#2C6B4F; border-color:#A8CEB8 }
+        .rd-btn-edit:hover { background:#F0FFF8; border-color:#2C6B4F }
         .rd-btn-delete { color:#c0392b }
         .rd-btn-delete:hover { background:#fff0ee; border-color:#c0392b }
-
-        /* ── Preview panel ── */
-        .rd-preview {
-          background:var(--white); border-radius:14px; border:1px solid var(--border);
-          overflow:hidden; box-shadow:0 2px 16px rgba(58,46,36,0.06);
-        }
-        .rd-preview-header {
-          display:flex; align-items:center; justify-content:space-between;
-          padding:16px 24px; border-bottom:1px solid var(--border);
-          background:var(--bg);
-        }
-        .rd-preview-title {
-          font-family:'Cormorant Garamond',serif; font-size:16px;
-          font-weight:600; color:var(--accent);
-        }
-        .rd-btn-edit {
-          padding:9px 22px; border-radius:50px; border:none;
-          background:var(--accent); color:#FFF8F0; font-family:'Jost',sans-serif;
-          font-size:11.5px; font-weight:500; cursor:pointer;
-          transition:background .2s; letter-spacing:0.5px;
-        }
-        .rd-btn-edit:hover { background:#5A3E2C }
-        .rd-preview-content {
-          display:flex; align-items:flex-start; gap:32px;
-          padding:24px; background:var(--panel); min-height:220px;
-        }
-        .rd-preview-map {
-          flex-shrink:0; display:flex; flex-direction:column;
-          align-items:center; gap:8px;
-        }
-        .rd-map-label {
-          font-size:9px; letter-spacing:1px; color:var(--muted);
-          text-transform:uppercase; font-weight:500;
-        }
+        .rd-preview { background:var(--white); border-radius:14px; border:1px solid var(--border); overflow:hidden; box-shadow:0 2px 16px rgba(58,46,36,0.06) }
+        .rd-preview-header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border); background:var(--bg) }
+        .rd-preview-title { font-family:'Cormorant Garamond',serif; font-size:16px; font-weight:600; color:var(--accent) }
+        .rd-btn-open { padding:9px 22px; border-radius:50px; border:none; background:var(--accent); color:#FFF8F0; font-family:'Jost',sans-serif; font-size:11.5px; font-weight:500; cursor:pointer; transition:background .2s; letter-spacing:0.5px }
+        .rd-btn-open:hover { background:#5A3E2C }
+        .rd-preview-content { display:flex; align-items:flex-start; gap:32px; padding:24px; background:var(--panel); min-height:220px }
+        .rd-preview-map { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:8px }
+        .rd-map-label { font-size:9px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; font-weight:500 }
         .rd-info { flex:1; display:flex; flex-direction:column; gap:10px }
-        .rd-info-row {
-          display:flex; align-items:baseline; gap:8px;
-          padding-bottom:8px; border-bottom:1px solid var(--border);
-        }
+        .rd-info-row { display:flex; align-items:baseline; gap:8px; padding-bottom:8px; border-bottom:1px solid var(--border) }
         .rd-info-row:last-child { border-bottom:none; padding-bottom:0 }
-        .rd-info-key {
-          font-size:9px; letter-spacing:1px; color:var(--muted);
-          text-transform:uppercase; font-weight:600; min-width:80px; flex-shrink:0;
-        }
+        .rd-info-key { font-size:9px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; font-weight:600; min-width:80px; flex-shrink:0 }
         .rd-info-val { font-size:13px; color:var(--text) }
         .rd-colors-row { display:flex; gap:8px; align-items:center }
-        .rd-color-chip {
-          display:flex; align-items:center; gap:5px; padding:3px 9px;
-          border-radius:20px; background:var(--white); border:1px solid var(--border);
-          font-size:11px; color:var(--muted);
-        }
+        .rd-color-chip { display:flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; background:var(--white); border:1px solid var(--border); font-size:11px; color:var(--muted) }
+        .rd-color-dot { display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,0.1); flex-shrink:0 }
         .rd-fur-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:2px }
-        .rd-fur-tag {
-          padding:2px 9px; border-radius:20px; background:var(--white);
-          border:1px solid var(--border); font-size:11px; color:var(--text);
-        }
-        .rd-empty {
-          text-align:center; padding:60px 0; color:var(--muted); font-size:13.5px;
-        }
+        .rd-fur-tag { padding:2px 9px; border-radius:20px; background:var(--white); border:1px solid var(--border); font-size:11px; color:var(--text) }
+        .rd-empty { text-align:center; padding:60px 0; color:var(--muted) }
         .rd-empty-icon { font-size:42px; margin-bottom:12px }
-        .rd-no-sel {
-          display:flex; align-items:center; justify-content:center;
-          min-height:220px; color:var(--muted); font-size:13px;
-          font-style:italic; font-family:'Cormorant Garamond',serif; font-size:16px;
-        }
+        .rd-no-sel { display:flex; align-items:center; justify-content:center; min-height:220px; color:var(--muted); font-family:'Cormorant Garamond',serif; font-size:16px; font-style:italic }
       `}</style>
 
       <div className="rd-page">
         <Navbar/>
         <div className="rd-body">
-
           <div className="rd-heading">Saved Designs</div>
 
-          {/* ── Table ── */}
           <div className="rd-table-wrap">
             {designs.length === 0 ? (
               <div className="rd-empty">
                 <div className="rd-empty-icon">🗂️</div>
-                <p>No saved designs yet.</p>
+                <p style={{fontSize:13.5}}>No saved designs yet.</p>
                 <p style={{marginTop:6,fontSize:12}}>Go to File → Create a room and save your design.</p>
               </div>
             ) : (
@@ -257,7 +175,7 @@ export default function RecentDesigns() {
                   {designs.map(d => (
                     <tr key={d.id}
                       className={`rd-tr${selected?.id===d.id?' sel':''}`}
-                      onClick={()=>setSelected(d)}>
+                      onClick={() => setSelected(d)}>
                       <td className="rd-td rd-td-code">{d.code}</td>
                       <td className="rd-td" style={{fontWeight:500}}>{d.name}</td>
                       <td className="rd-td" style={{color:'var(--muted)',fontSize:12}}>
@@ -265,8 +183,8 @@ export default function RecentDesigns() {
                       </td>
                       <td className="rd-td">
                         <div style={{display:'flex',gap:5}}>
-                          <span title="Wall" style={{display:'inline-block',width:14,height:14,borderRadius:3,background:d.wallColor,border:'1px solid rgba(0,0,0,0.12)',verticalAlign:'middle'}}/>
-                          <span title="Floor" style={{display:'inline-block',width:14,height:14,borderRadius:3,background:d.floorColor,border:'1px solid rgba(0,0,0,0.12)',verticalAlign:'middle'}}/>
+                          <span title="Wall" style={{display:'inline-block',width:14,height:14,borderRadius:3,background:d.wallColor,border:'1px solid rgba(0,0,0,0.12)'}}/>
+                          <span title="Floor" style={{display:'inline-block',width:14,height:14,borderRadius:3,background:d.floorColor,border:'1px solid rgba(0,0,0,0.12)'}}/>
                         </div>
                       </td>
                       <td className="rd-td" style={{color:'var(--muted)',fontSize:12}}>{d.date}</td>
@@ -277,10 +195,10 @@ export default function RecentDesigns() {
                         <div className="rd-actions">
                           <button className="rd-btn rd-btn-view"
                             onClick={e=>{e.stopPropagation();setSelected(d)}}>Preview</button>
-                          <button className="rd-btn rd-btn-view" style={{color:'#2C6B4F',borderColor:'#A8CEB8'}}
+                          <button className="rd-btn rd-btn-edit"
                             onClick={e=>{e.stopPropagation();handleEdit(d)}}>✏️ Edit</button>
                           <button className="rd-btn rd-btn-delete"
-                            onClick={e=>{e.stopPropagation();if(window.confirm('Delete this design?'))handleDelete(d.id)}}>Delete</button>
+                            onClick={e=>{e.stopPropagation();handleDelete(d.id)}}>Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -290,14 +208,13 @@ export default function RecentDesigns() {
             )}
           </div>
 
-          {/* ── Preview panel ── */}
           <div className="rd-preview">
             <div className="rd-preview-header">
               <span className="rd-preview-title">
                 {selected ? `${selected.name} · ${selected.code}` : 'Select a design to preview'}
               </span>
               {selected && (
-                <button className="rd-btn-edit" onClick={()=>handleEdit(selected)}>
+                <button className="rd-btn-open" onClick={() => handleEdit(selected)}>
                   ✏️ Open in Editor
                 </button>
               )}
@@ -305,13 +222,10 @@ export default function RecentDesigns() {
 
             {selected ? (
               <div className="rd-preview-content">
-                {/* Mini floor plan */}
                 <div className="rd-preview-map">
                   <div className="rd-map-label">Floor Plan</div>
                   <DesignPreview design={selected}/>
                 </div>
-
-                {/* Info */}
                 <div className="rd-info">
                   <div className="rd-info-row">
                     <span className="rd-info-key">Name</span>
@@ -351,9 +265,9 @@ export default function RecentDesigns() {
                         {(selected.items||[]).length} item{(selected.items||[]).length!==1?'s':''}
                       </div>
                       <div className="rd-fur-tags">
-                        {[...new Set((selected.items||[]).map(i=>i.label))].map((lbl,i)=>(
+                        {[...new Map((selected.items||[]).map(i=>[i.label,i])).values()].map((it,i)=>(
                           <span key={i} className="rd-fur-tag">
-                            {EMOJI[(selected.items||[]).find(it=>it.label===lbl)?.id]||''} {lbl}
+                            {EMOJI[it.id]||''} {it.label}
                           </span>
                         ))}
                       </div>
@@ -362,12 +276,9 @@ export default function RecentDesigns() {
                 </div>
               </div>
             ) : (
-              <div className="rd-no-sel">
-                Click any row to preview your saved design
-              </div>
+              <div className="rd-no-sel">Click any row to preview your saved design</div>
             )}
           </div>
-
         </div>
       </div>
     </>

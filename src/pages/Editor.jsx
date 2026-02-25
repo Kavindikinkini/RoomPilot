@@ -666,7 +666,40 @@ export default function Editor() {
     if (prev.current === key) return
     prev.current = key
 
-    const { template, preset, editDesign } = s
+    const { template, preset, editDesign, templateDesign } = s
+
+    if (templateDesign) {
+      const d = templateDesign
+      setWidth(String(d.width  || '5.0'))
+      setDepth(String(d.depth  || d.length || '6.0'))
+      setHeight(String(d.height || '2.8'))
+      setWallColor(d.wallColor  || '#EDE9E3')
+      setFloorColor(d.floorColor || '#C4A882')
+      setDname(d.name || '')
+      setEditId(null)   // ← KEY: no editId, so Save always creates NEW design
+
+      const raw = d.items || []
+      const converted = raw.map(item => {
+        const cat = FLIST.find(f => f.id === item.id)
+        return {
+          ...(cat || {}), ...item,
+          uid:   UID++,
+          rotY:  item.rotY  || 0,
+          color: item.color || '#A08060',
+          w: item.w || cat?.w || 1,
+          d: item.d || cat?.d || 1,
+          h: cat?.h || item.h || 0.8,
+          x: item.x || 0,
+          y: item.y || 0,
+        }
+      })
+      setItems(converted)
+      setCreated(true)
+      setViewMode('3D')
+      setSelUid(null)
+      setRoom3DKey(`template-${Date.now()}`)
+      return
+    }
 
     if (editDesign) {
       const d = editDesign
@@ -742,24 +775,62 @@ export default function Editor() {
   }
 
   const handleSave = () => {
-    const user = JSON.parse(localStorage.getItem('currentUser')||'null')
-    if (!user) { navigate('/signin'); return }
-    const name = dname.trim() || 'My Design'
-    const all  = JSON.parse(localStorage.getItem('designs')||'[]')
-    if (editId) {
-      const updated = all.map(d => d.id === editId
-        ? { ...d, name, width, depth, length:depth, height, wallColor, floorColor, items, date: new Date().toLocaleDateString('en-GB') }
-        : d)
-      localStorage.setItem('designs', JSON.stringify(updated))
-      alert(`✅ Design "${name}" updated!`)
-    } else {
-      const code   = 'DR' + Math.floor(100 + Math.random() * 900)
-      const design = { id:Date.now(), userId:user.id, code, name, date:new Date().toLocaleDateString('en-GB'), width, depth, length:depth, height, wallColor, floorColor, items }
-      localStorage.setItem('designs', JSON.stringify([...all, design]))
-      setEditId(design.id)
-      alert(`✅ Design "${name}" saved!\nCode: ${code}`)
+  const user = JSON.parse(localStorage.getItem('currentUser') || 'null')
+  if (!user) { navigate('/signin'); return }
+
+  const name = dname.trim() || 'My Design'
+  const all  = JSON.parse(localStorage.getItem('designs') || '[]')
+
+  // Only treat as UPDATE if editId actually exists in localStorage
+  const existingInStorage = editId
+    ? all.find(d => d.id === editId || d.id === Number(editId))
+    : null
+
+  if (existingInStorage) {
+    // ── UPDATE existing saved design ────────────────────────────────────────
+    const updated = all.map(d =>
+      (d.id === editId || d.id === Number(editId))
+        ? {
+            ...d,
+            name,
+            width,
+            depth,
+            length:     depth,
+            height,
+            wallColor,
+            floorColor,
+            items,
+            date:   new Date().toLocaleDateString('en-GB'),
+            userId: existingInStorage.userId ?? user.id,
+            code:   existingInStorage.code,
+          }
+        : d
+    )
+    localStorage.setItem('designs', JSON.stringify(updated))
+    alert(`✅ Design "${name}" updated!`)
+  } else {
+    // ── SAVE brand-new design (fresh room OR from template) ─────────────────
+    const newId  = Date.now()
+    const code   = 'DR' + Math.floor(100 + Math.random() * 900)
+    const design = {
+      id:         newId,
+      userId:     user.id,
+      code,
+      name,
+      date:       new Date().toLocaleDateString('en-GB'),
+      width,
+      depth,
+      length:     depth,
+      height,
+      wallColor,
+      floorColor,
+      items,
     }
+    localStorage.setItem('designs', JSON.stringify([...all, design]))
+    setEditId(newId)
+    alert(`✅ Design "${name}" saved!\nCode: ${code}`)
   }
+}
 
   const handleNew = () => {
     if ((items.length>0||created) && !window.confirm('Start a new design? Unsaved changes will be lost.')) return

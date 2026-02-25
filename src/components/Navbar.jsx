@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import logo from '../assets/LOGO.png'
 
 const RoomPilotLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 52" fill="none" height="42" style={{ display:'block' }}>
@@ -46,7 +47,7 @@ export default function Navbar() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Jost:wght@300;400;500;600&display=swap');
 
         .rp-nav {
-          height: 68px;
+          height: 85px;
           background: #F7F4EE;
           border-bottom: 1px solid #E2D9CF;
           display: flex;
@@ -71,7 +72,7 @@ export default function Navbar() {
         .rp-nav-links {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 20px;
           list-style: none;
           margin: 0;
           padding: 0;
@@ -80,7 +81,7 @@ export default function Navbar() {
         .rp-nav-link {
           text-decoration: none;
           font-family: 'Jost', sans-serif;
-          font-size: 14.5px;
+          font-size: 18px;
           font-weight: 400;
           color: #8A7A6A;
           letter-spacing: 0.4px;
@@ -156,11 +157,9 @@ export default function Navbar() {
       `}</style>
 
       <nav className="rp-nav">
-        {/* Logo + tagline */}
         <Link to="/home" className="rp-nav-logo">
           <div className="rp-logo-wrap">
-            <RoomPilotLogo />
-            <span className="rp-nav-tagline">design your space</span>
+             <img src={logo} alt="RoomPilot" style={{ height: '80px', width: '145px', display: 'block', objectFit: 'contain', mixBlendMode: 'multiply' }} />
           </div>
         </Link>
 

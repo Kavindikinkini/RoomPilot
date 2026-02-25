@@ -1,295 +1,154 @@
-import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+
+// Inline SVG logo — no external file dependency
+const RoomPilotLogo = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none" height="36" style={{ display:'block' }}>
+    {/* Isometric room icon */}
+    <g transform="translate(2,4)">
+      {/* Left wall */}
+      <polygon points="20,6 20,32 0,20 0,0" fill="#8B6A50" opacity="0.3"/>
+      {/* Right wall */}
+      <polygon points="20,6 40,0 40,20 20,32" fill="#6B4F3A" opacity="0.5"/>
+      {/* Floor */}
+      <polygon points="20,32 0,20 20,14 40,20" fill="#C8A870" opacity="0.35"/>
+      {/* Crisp outline */}
+      <polygon points="20,6 40,0 40,20 20,32 0,20 0,0" fill="none" stroke="#6B4F3A" strokeWidth="1.5" strokeLinejoin="round"/>
+      <line x1="20" y1="6" x2="20" y2="32" stroke="#6B4F3A" strokeWidth="1" opacity="0.35"/>
+      <line x1="0" y1="20" x2="40" y2="20" stroke="#6B4F3A" strokeWidth="1" opacity="0.35"/>
+      {/* Compass dot */}
+      <circle cx="20" cy="20" r="3.8" fill="white" stroke="#6B4F3A" strokeWidth="1.3"/>
+      <circle cx="20" cy="20" r="1.5" fill="#C8A870"/>
+    </g>
+    {/* Room - bold */}
+    <text x="56" y="31"
+      fontFamily="Cormorant Garamond, Georgia, serif"
+      fontSize="22" fontWeight="600"
+      fill="#3A2E24" letterSpacing="0.2">Room</text>
+    {/* Pilot - light */}
+    <text x="115" y="31"
+      fontFamily="Cormorant Garamond, Georgia, serif"
+      fontSize="22" fontWeight="300"
+      fill="#8B6A50" letterSpacing="1.5">Pilot</text>
+  </svg>
+)
 
 export default function Navbar() {
-  const navigate = useNavigate()
   const location = useLocation()
-  const [templatesOpen, setTemplatesOpen] = useState(false)
-  const [roomTemplatesOpen, setRoomTemplatesOpen] = useState(false)
-  const [furniturePresetsOpen, setFurniturePresetsOpen] = useState(false)
+  const path = location.pathname
 
-  const isActive = (path) => location.pathname === path
-
-  const handleRoomTemplate = (type) => {
-    setTemplatesOpen(false)
-    setRoomTemplatesOpen(false)
-    navigate('/editor', { state: { template: type } })
-  }
-
-  const handleFurniturePreset = (type) => {
-    setTemplatesOpen(false)
-    setFurniturePresetsOpen(false)
-    navigate('/editor', { state: { preset: type } })
-  }
+  const navLinks = [
+    { to: '/',               label: 'Home'           },
+    { to: '/editor',         label: 'File'           },
+    { to: '/templates',      label: 'Templates'      },
+    { to: '/recent-designs', label: 'Recent Designs' },
+    { to: '/help',           label: 'Help'           },
+  ]
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500&display=swap');
-
-        .navbar {
-          width: 100%;
-          background: #F5F2EC;
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Jost:wght@300;400;500&display=swap');
+        .rp-nav {
+          height: 56px;
+          background: #F7F4EE;
+          border-bottom: 1px solid #E8E0D8;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 48px;
-          height: 56px;
-          border-bottom: 1px solid #E8E3DC;
+          padding: 0 32px;
           position: sticky;
           top: 0;
           z-index: 100;
-          box-sizing: border-box;
-          font-family: 'Jost', sans-serif;
         }
-
-        .nav-brand {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 17px;
-          font-weight: 700;
-          color: #4E4034;
-          cursor: pointer;
-          white-space: nowrap;
-        }
-
-        .nav-links {
+        .rp-nav-logo {
+          text-decoration: none;
           display: flex;
           align-items: center;
-          gap: 36px;
+          flex-shrink: 0;
+        }
+        .rp-nav-links {
+          display: flex;
+          align-items: center;
+          gap: 32px;
           list-style: none;
           margin: 0;
           padding: 0;
         }
-
-        .nav-item {
-          position: relative;
-        }
-
-        .nav-link {
-          background: none;
-          border: none;
+        .rp-nav-link {
+          text-decoration: none;
           font-family: 'Jost', sans-serif;
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 400;
-          color: #4E4034;
-          cursor: pointer;
-          padding: 4px 0;
-          letter-spacing: 0.2px;
+          color: #7A6A5A;
+          letter-spacing: 0.3px;
           position: relative;
+          padding-bottom: 2px;
           transition: color 0.2s;
         }
-
-        .nav-link.active::after {
+        .rp-nav-link:hover {
+          color: #3A2E24;
+        }
+        .rp-nav-link.active {
+          color: #3A2E24;
+          font-weight: 500;
+        }
+        .rp-nav-link.active::after {
           content: '';
           position: absolute;
           bottom: -4px;
           left: 0;
           right: 0;
-          height: 2px;
-          background: #4E4034;
-          border-radius: 2px;
+          height: 1.5px;
+          background: #6B4F3A;
+          border-radius: 1px;
         }
-
-        .nav-link:hover { color: #8C7864; }
-
-        /* DROPDOWN */
-        .dropdown {
-          position: absolute;
-          top: calc(100% + 12px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: #F5F2EC;
-          border: 1px solid #D9D2C6;
-          border-radius: 10px;
-          box-shadow: 0 4px 20px rgba(78,64,52,0.12);
-          min-width: 180px;
-          padding: 6px 0;
-          z-index: 200;
-        }
-
-        .dropdown-item {
+        .rp-nav-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: 1.5px solid #D8D0C4;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 10px 18px;
-          font-family: 'Jost', sans-serif;
-          font-size: 13px;
-          color: #4E4034;
+          justify-content: center;
           cursor: pointer;
-          background: none;
-          border: none;
-          width: 100%;
-          text-align: left;
-          transition: background 0.15s;
-          border-radius: 6px;
+          transition: border-color 0.2s, background 0.2s;
+          background: transparent;
+          color: #7A6A5A;
         }
-        .dropdown-item:hover { background: #EDE8E1; }
-
-        /* SUB DROPDOWN */
-        .sub-dropdown {
-          position: absolute;
-          top: 0;
-          left: 100%;
-          margin-left: 4px;
-          background: #F5F2EC;
-          border: 1px solid #D9D2C6;
-          border-radius: 10px;
-          box-shadow: 0 4px 20px rgba(78,64,52,0.12);
-          min-width: 160px;
-          padding: 6px 0;
-          z-index: 300;
-        }
-
-        .sub-item {
-          display: block;
-          padding: 10px 18px;
-          font-family: 'Jost', sans-serif;
-          font-size: 13px;
-          color: #4E4034;
-          cursor: pointer;
-          background: none;
-          border: none;
-          width: 100%;
-          text-align: left;
-          transition: background 0.15s;
-          border-radius: 6px;
-        }
-        .sub-item:hover { background: #EDE8E1; }
-
-        .nav-profile {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #4E4034;
-          display: flex;
-          align-items: center;
-          padding: 0;
-          transition: color 0.2s;
-        }
-        .nav-profile:hover { color: #8C7864; }
-
-        .nav-profile svg {
-          width: 26px;
-          height: 26px;
-          stroke: currentColor;
-          fill: none;
-          stroke-width: 1.5;
+        .rp-nav-icon:hover {
+          border-color: #6B4F3A;
+          background: #EDE9E3;
+          color: #3A2E24;
         }
       `}</style>
 
-      <nav className="navbar">
-        {/* Brand */}
-        <div className="nav-brand" onClick={() => navigate('/home')}>
-          Modern Furniture
-        </div>
+      <nav className="rp-nav">
+        {/* Logo */}
+        <Link to="/" className="rp-nav-logo">
+          <RoomPilotLogo />
+        </Link>
 
-        {/* Links */}
-        <ul className="nav-links">
-
-          {/* Home */}
-          <li className="nav-item">
-            <button
-              className={`nav-link${isActive('/home') ? ' active' : ''}`}
-              onClick={() => navigate('/home')}
-            >
-              Home
-            </button>
-          </li>
-
-          {/* File */}
-          <li className="nav-item">
-            <button
-              className={`nav-link${isActive('/editor') ? ' active' : ''}`}
-              onClick={() => navigate('/editor')}
-            >
-              File
-            </button>
-          </li>
-
-          {/* Templates */}
-          <li className="nav-item">
-            <button
-              className={`nav-link${templatesOpen ? ' active' : ''}`}
-              onClick={() => setTemplatesOpen(o => !o)}
-            >
-              Templates
-            </button>
-
-            {templatesOpen && (
-              <div className="dropdown">
-
-                {/* Room Templates */}
-                <div style={{ position: 'relative' }}>
-                  <button
-                    className="dropdown-item"
-                    onMouseEnter={() => { setRoomTemplatesOpen(true); setFurniturePresetsOpen(false) }}
-                  >
-                    Room Templates <span>›</span>
-                  </button>
-                  {roomTemplatesOpen && (
-                    <div className="sub-dropdown">
-                      {['Living Room','Bed Room','Office','Dining Area','Kitchen Area'].map(t => (
-                        <button key={t} className="sub-item" onClick={() => handleRoomTemplate(t)}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Furniture Presets */}
-                <div style={{ position: 'relative' }}>
-                  <button
-                    className="dropdown-item"
-                    onMouseEnter={() => { setFurniturePresetsOpen(true); setRoomTemplatesOpen(false) }}
-                  >
-                    Furniture Presets <span>›</span>
-                  </button>
-                  {furniturePresetsOpen && (
-                    <div className="sub-dropdown">
-                      {['Living Room Set','Bed Room Set','Office Set','Dining Set','Kitchen Set'].map(t => (
-                        <button key={t} className="sub-item" onClick={() => handleFurniturePreset(t)}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            )}
-          </li>
-
-          {/* Recent Designs */}
-          <li className="nav-item">
-            <button
-              className={`nav-link${isActive('/designs') ? ' active' : ''}`}
-              onClick={() => navigate('/designs')}
-            >
-              Recent Designs
-            </button>
-          </li>
-
-          {/* Help */}
-          <li className="nav-item">
-            <button
-              className={`nav-link${isActive('/help') ? ' active' : ''}`}
-              onClick={() => navigate('/help')}
-            >
-              Help
-            </button>
-          </li>
-
+        {/* Nav links */}
+        <ul className="rp-nav-links">
+          {navLinks.map(({ to, label }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className={`rp-nav-link${path === to ? ' active' : ''}`}
+              >
+                {label}
+              </Link>
+            </li>
+          ))}
         </ul>
 
-        {/* Profile Icon */}
-        <button className="nav-profile" onClick={() => navigate('/profile')}>
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        {/* User icon */}
+        <button className="rp-nav-icon" aria-label="Account">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
           </svg>
         </button>
-
       </nav>
     </>
   )

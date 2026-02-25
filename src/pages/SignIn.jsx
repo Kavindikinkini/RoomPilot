@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const images = [
-  'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
-  'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80',
-  'https://images.unsplash.com/photo-1549187774-b4e9b0445b41?w=800&q=80',
-]
+import img1 from '../assets/Carousel1.png'
+import img2 from '../assets/Carousel2.png'
+import img3 from '../assets/Carousel3.png'
+
+const images = [img1, img2, img3]
 
 const EyeIcon = ({ open }) => open ? (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

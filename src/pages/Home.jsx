@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import homeImg from '../assets/Home.png'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -179,7 +180,7 @@ export default function Home() {
           <div className="home-text">
             <h1 className="home-title">Modern Furniture</h1>
             <p className="home-desc">
-              The Modern Furniture Web Application is designed to help customers
+              The RoomPilot Web Application is designed to help customers
               visualize and select furniture items easily. It allows users to view
               products, customize options, and see how furniture would look in their
               room space. The app improves the shopping experience by helping
@@ -192,8 +193,8 @@ export default function Home() {
           </div>
 
           <div className="home-image">
-            <img
-              src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80"
+             <img
+              src={homeImg}
               alt="Modern furniture room"
             />
           </div>
